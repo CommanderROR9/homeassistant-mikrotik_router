@@ -939,9 +939,9 @@ def test_mixin_wlan_adds_wireless_attributes():
 
 def test_mixin_wifi_adds_wireless_attributes():
     """Wifi-type interface (be3) populates the same wireless attributes as wlan."""
-    entity = _ConcreteEntity({"type": "wifi", "ssid": "Haus", "band": "2ghz-ax"})
+    entity = _ConcreteEntity({"type": "wifi", "ssid": "MyWifi", "band": "2ghz-ax"})
     attrs = entity.extra_state_attributes
-    assert attrs["ssid"] == "Haus"
+    assert attrs["ssid"] == "MyWifi"
     assert attrs["band"] == "2ghz-ax"
 
 
