@@ -4,6 +4,25 @@ Changes listed in reverse chronological order.
 
 ---
 
+## CR-260921-inbound-triage — file tracking for inbound issues/PRs; repo-status + prerelease review
+
+**Date:** 2026-09-21
+**Branch:** `claude/repo-status-release-review-ny8z6b` → PR to `dev`
+**Status:** In Review (docs-only; no integration-code changes)
+
+### What changed
+- `docs/ISSUES.md` — new In-flight block (repo aligned; **v2.3.22 promotion blocked on #144**; inbound triage summary; ADR-numbering + authorship-preservation notes). Four new `Active` entries filed as drafts: `ISS-260915-trap-not-a-disconnect` (#144/#145), `ISS-260814-dummy-mac-device-identity` (#138), `ENH-260919-live-interface-rates` (#146/#147), `ISS-260903-via-device-deprecation` (#131).
+- `docs/CHANGE-REGISTER.md` — this entry.
+- Session handoff (code review + drafted PR comments + IDE next-steps) written to gitignored `docs/internal/handoff-260921-inbound-triage.md`.
+
+### Why
+Periodic repo-status + prerelease confirmation and inbound issue/PR triage. Confirmed alignment (`master ⊆ dev` invariant, consistent version files, correctly-flagged prereleases) and surfaced a **v2.3.22 release-blocker** (#144, LTE-probe `!trap` handled as a disconnect; rc.1 affected). Four inbound items reviewed for inclusion and filed as drafts; code review + PR-comment drafts prepared for an IDE test session before any merge. No PRs merged and no integration code touched this session (deliberate — "before any major changes").
+
+### Verification
+- Docs-only change; ruff/tests unaffected. `homelab-leak` gate: entries carry no private IPs/MACs (hardware model names + RouterOS versions only).
+- PR states verified via GitHub: #145/#147 `unstable` (CI pending, fork-run approval needed), #138 `clean` with full CI green (re-verified in the IDE follow-up 2026-09-21, which also reviewed `upstream/master` + `ahharvey/master` — no fork changes to pull; see ISSUES.md In-flight). `master ⊆ dev` re-checked green; version files consistent (master 2.3.21, dev 2.3.22-rc.1); all GitHub releases carry the correct `prerelease` flag.
+- No live-router validation required (tracking/review only). Inclusion decisions, merges (authorship-preserving), and ADR-number assignment deferred to the IDE session per the handoff.
+
 ## CR-260909-release-v2.3.22-rc.1 — cut v2.3.22-rc.1 release candidate
 
 **Date:** 2026-09-09
