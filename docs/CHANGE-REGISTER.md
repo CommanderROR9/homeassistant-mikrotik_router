@@ -20,7 +20,7 @@ Periodic repo-status + prerelease confirmation and inbound issue/PR triage. Conf
 
 ### Verification
 - Docs-only change; ruff/tests unaffected. `homelab-leak` gate: entries carry no private IPs/MACs (hardware model names + RouterOS versions only).
-- PR states verified via GitHub: #145/#147 `unstable` (CI pending, fork-run approval needed), #138 `clean`. `master ⊆ dev` re-checked green; version files consistent (master 2.3.21, dev 2.3.22-rc.1); all GitHub releases carry the correct `prerelease` flag.
+- PR states verified via GitHub: #145/#147 `unstable` (CI pending, fork-run approval needed), #138 `clean` with full CI green (re-verified in the IDE follow-up 2026-09-21, which also reviewed `upstream/master` + `ahharvey/master` — no fork changes to pull; see ISSUES.md In-flight). `master ⊆ dev` re-checked green; version files consistent (master 2.3.21, dev 2.3.22-rc.1); all GitHub releases carry the correct `prerelease` flag.
 - No live-router validation required (tracking/review only). Inclusion decisions, merges (authorship-preserving), and ADR-number assignment deferred to the IDE session per the handoff.
 
 ## CR-260909-release-v2.3.22-rc.1 — cut v2.3.22-rc.1 release candidate
