@@ -2860,11 +2860,29 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             ],
         )
 
+        # /interface/wifi nests settings as dotted keys; flatten them onto the
+        # legacy flat attribute names so wifi interfaces expose the same
+        # attribute names as wlan (ssid/mode/country/band/channel-width).
+        # Owner review 2026-10-04 on #152: cheaper before release than after
+        # (renaming later would be a breaking change).
+        _wifi_flat_map = {
+            "configuration.ssid": "ssid",
+            "configuration.mode": "mode",
+            "configuration.country": "country",
+            "channel.band": "band",
+            "channel.width": "channel-width",
+        }
         for uid in self.ds["wireless"]:
             if self.ds["wireless"][uid]["master-interface"]:
                 for tmp in self.ds["wireless"][uid]:
                     if self.ds["wireless"][uid][tmp] == "unknown":
                         self.ds["wireless"][uid][tmp] = self.ds["wireless"][self.ds["wireless"][uid]["master-interface"]][tmp]
+
+            if self._wifimodule == "wifi":
+                for nested, flat in _wifi_flat_map.items():
+                    value = self.ds["wireless"][uid].get(nested)
+                    if value not in (None, "unknown"):
+                        self.ds["wireless"][uid][flat] = value
 
             if uid in self.ds["interface"]:
                 for tmp in self.ds["wireless"][uid]:

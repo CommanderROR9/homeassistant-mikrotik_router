@@ -1176,33 +1176,37 @@ def test_skip_route_table_count_follows_same_gate():
     assert _skip_sensor(cfg_on, desc, data, "main") is False
 
 
-def test_skip_port_binary_sensor_on_wifi_interface():
-    """Port binary sensor is skipped for wifi-type interfaces (be3)."""
+def test_no_skip_port_binary_sensor_on_wifi_interface():
+    """Port binary sensor is KEPT for wifi-type interfaces (owner review #152).
+
+    type=wifi is every interface on the new wifi package; dropping the sensor
+    would break existing automations, so parity with wlan needs its own
+    release-noted change.
+    """
     desc = make_entity_desc(func="MikrotikPortBinarySensor")
     data = {"wifi1": {"type": "wifi"}}
     cfg = make_config_entry({CONF_SENSOR_PORT_TRACKER: True})
 
-    assert _skip_sensor(cfg, desc, data, "wifi1") is True
+    assert _skip_sensor(cfg, desc, data, "wifi1") is False
 
 
 def test_mixin_wifi_exposes_only_real_attributes():
-    """Wifi interface exposes nested-schema attributes without `unknown` junk."""
+    """Wifi interface exposes flat attribute names without `unknown` junk."""
     entity = _ConcreteEntity(
         {
             "type": "wifi",
-            "configuration.ssid": "ExampleSSID",
-            "channel.band": "5ghz-ax",
-            "configuration.mode": "unknown",
-            "channel.width": "unknown",
-            "ssid": "unknown",
+            "ssid": "ExampleSSID",
+            "band": "5ghz-ax",
+            "mode": "unknown",
+            "channel-width": "unknown",
             "radio-name": "unknown",
             "wds-mode": "unknown",
         }
     )
     attrs = entity.extra_state_attributes
-    assert attrs["configuration.ssid"] == "ExampleSSID"
-    assert attrs["channel.band"] == "5ghz-ax"
-    assert "configuration.mode" not in attrs
-    assert "channel.width" not in attrs
-    for junk in ("ssid", "radio_name", "wds_mode"):
+    assert attrs["ssid"] == "ExampleSSID"
+    assert attrs["band"] == "5ghz-ax"
+    assert "mode" not in attrs
+    assert "channel_width" not in attrs
+    for junk in ("radio_name", "wds_mode"):
         assert junk not in attrs

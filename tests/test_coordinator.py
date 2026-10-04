@@ -6203,7 +6203,7 @@ def test_wireless_hosts_signal_absent_stays_absent():
 
 
 def test_get_wireless_wifi_nested_keys_reach_interface():
-    """/interface/wifi dotted keys are parsed and copied onto the interface."""
+    """/interface/wifi dotted keys are flattened onto legacy flat names."""
     coordinator = make_coordinator(major_fw_version=7)
     coordinator._wifimodule = "wifi"
     coordinator.ds["interface"] = {"wifi1": {"name": "wifi1", "type": "wifi"}}
@@ -6215,6 +6215,7 @@ def test_get_wireless_wifi_nested_keys_reach_interface():
                     "mac-address": "AA:BB:CC:DD:EE:04",
                     "configuration.ssid": "ExampleSSID",
                     "configuration.mode": "ap",
+                    "configuration.country": "Germany",
                     "channel.band": "2ghz-be",
                     "channel.width": "20/40mhz",
                     "running": True,
@@ -6225,6 +6226,33 @@ def test_get_wireless_wifi_nested_keys_reach_interface():
     )
     coordinator.get_wireless()
     iface = coordinator.ds["interface"]["wifi1"]
-    assert iface["configuration.ssid"] == "ExampleSSID"
-    assert iface["channel.band"] == "2ghz-be"
-    assert iface["channel.width"] == "20/40mhz"
+    assert iface["ssid"] == "ExampleSSID"
+    assert iface["mode"] == "ap"
+    assert iface["country"] == "Germany"
+    assert iface["band"] == "2ghz-be"
+    assert iface["channel-width"] == "20/40mhz"
+
+
+def test_get_wireless_wifi_absent_nested_keys_stay_unknown():
+    """Missing nested keys are not fabricated (null-not-guess)."""
+    coordinator = make_coordinator(major_fw_version=7)
+    coordinator._wifimodule = "wifi"
+    coordinator.ds["interface"] = {"wifi1": {"name": "wifi1", "type": "wifi"}}
+    coordinator.api = MockMikrotikAPI(
+        responses={
+            "/interface/wifi": [
+                {
+                    "name": "wifi1",
+                    "mac-address": "AA:BB:CC:DD:EE:05",
+                    "configuration.ssid": "ExampleSSID",
+                    "running": True,
+                    "disabled": False,
+                },
+            ],
+        }
+    )
+    coordinator.get_wireless()
+    iface = coordinator.ds["interface"]["wifi1"]
+    assert iface["ssid"] == "ExampleSSID"
+    assert iface["band"] == "unknown"
+    assert iface["channel-width"] == "unknown"
