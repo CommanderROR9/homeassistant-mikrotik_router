@@ -719,7 +719,7 @@ Set `native_unit_of_measurement=MILLIAMPERE`; remove `suggested_unit_of_measurem
 **Type:** Bug
 **Priority:** Critical
 **Created:** 2026-04-17
-**Status:** 🟡 In Progress — hotfix (v2.3.14) pins `librouteros<4.0`. **Reframed by G0 panel 2026-06-14 (see Correction).** **Fix-first done:** the `login_method` callable kwarg is corrected on `fix/librouteros-login-method` (CR-260614-librouteros-login-method); the `<4.0` cap-lift remains separate (`ENH-260512-librouteros-test-matrix`).
+**Status:** 🟡 In Progress — hotfix (v2.3.14) pins `librouteros<4.0`. **Reframed by G0 panel 2026-06-14 (see Correction).** **Fix-first done:** the `login_method` callable kwarg is corrected on `fix/librouteros-login-method` (CR-260614-librouteros-login-method); the `<4.0` cap-lift remains separate (`ENH-260512-librouteros-test-matrix`). **2026-10-04:** cap lifted to `<5` on `fix/librouteros-4x` (CR-261004-librouteros-4x) — forced by hassfest rejecting `<4.0` against HA core's `librouteros==4.2.2`; closes on v2.3.22.
 
 **Correction (G0 panel, 2026-06-14 — verified vs luqasz/librouteros source):**
 The `login_methods`→`login_method` (string→callable) change landed in **librouteros 3.0.0, NOT 4.0.x**. So the current code (`login_methods="plain"`, mikrotikapi.py) is wrong across the **whole pinned range** — the unknown kwarg is dropped and `connect()` falls back to the default `plain` callable, so it "works" by accident; **`login_method="token"` users silently get `plain` (latent auth bug)**. librouteros **4.0.0's only API change** is `cmd` made positional-only — **no impact** (the integration always passes the command positionally); `Path`/`query()`/exceptions are byte-identical 3.4.1↔4.0.0; the library is pure-Python (3.14 fine). **Revised plan:** (1) **fix-first** — map the config string to `librouteros.login.plain`/`token` in `MikrotikAPI.__init__` and pass `login_method=` (callable), under the **current `<4.0` pin**; live-validate plain AND token on a real router (CI mocks are blind — 4.0.0 is already installed locally and the mocked suite passes regardless). (2) **then** lift the cap to `librouteros>=4.0,<5` separately. Renumber the salvage-branch `ADR-010` (librouteros) → **ADR-015**. Naming: the fix can ride a `2.3.x`; the floor-bump is the real **v2.4.0** trigger (with the deferred coordinator decomposition).
@@ -792,7 +792,7 @@ On routers with empty registration tables (hAP ac2 with new WiFi package), wirel
 **Type:** Enhancement (CI)
 **Priority:** Medium
 **Created:** 2026-05-12
-**Status:** 🔴 Open
+**Status:** 🟡 In Review — `fix/librouteros-4x` (CR-261004-librouteros-4x): cap lifted to `<5`; CI default legs resolve 4.x, plus one `librouteros==3.4.1` floor leg. Latest-3.x / expected-fail legs dropped — nothing in our API surface differs between 3.4.1 and 4.2.2 (see CR).
 **Promoted:** 2026-05-30 — was a follow-up bullet under `ISS-260512-ci-manifest-drift`; filed as its own entry (handoff-gap backfill, config `ISS-260526`).
 
 **Need:**

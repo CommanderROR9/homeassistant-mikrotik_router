@@ -4,6 +4,31 @@ Changes listed in reverse chronological order.
 
 ---
 
+## CR-261004-librouteros-4x — lift librouteros cap to `<5` (unblocks CI / v2.3.22)
+
+**Date:** 2026-10-04
+**Branch:** `fix/librouteros-4x` → PR to `dev`
+**Status:** In Review
+
+### What changed
+- `manifest.json`, `requirements.txt`, `requirements_dev.txt`, `requirements_tests.txt` — `librouteros>=3.4.1,<4.0` → `librouteros>=3.4.1,<5`.
+- `.github/workflows/ci.yml` — tests matrix gains a `Python Tests (3.13, librouteros 3.4.1)` leg pinning the manifest floor; the existing legs resolve the newest allowed (4.x). Each leg prints the installed librouteros version.
+
+### Why
+`dev` CI went red on 2026-10-04: hassfest rejects `librouteros>=3.4.1,<4.0` as incompatible with `librouteros==4.2.2`, which HA core's own `mikrotik` integration requires (HA 2026.9.2 ships `4.1.1`; core `dev` ships `4.2.2` — checked via the core repo's `homeassistant/components/mikrotik/manifest.json`). This blocks v2.3.22.
+
+No code change is needed. The only 4.0 break (`login_methods` → `login_method` callable) was already fixed in CR-260614-librouteros-login-method. Checked against luqasz/librouteros source at tags `3.4.1` and `4.2.2`:
+- `connect()` — 4.x makes kwargs keyword-only; we pass only `encoding`, `login_method`, `port`, `ssl_wrapper`, all valid in both.
+- `Api.path()`, `Path.__iter__`/`__call__`/`update` — same semantics.
+- `TrapError` / `MultiTrapError` (used by #145) — identical classes.
+- `parse_word` — 4.x keeps non-canonical integers as strings (`"00"`, `"+5"`), where 3.x cast them to int. This is a fidelity improvement, and we compare none of those values.
+
+Upstream (tomaae `4871855`/`d5b153d`) added a `TypeError` retry that swaps `login_method`/`login_methods`. We don't need it because we already pass the callable, so it's not ported. The floor stays at 3.4.1; raising it to `>=4.0` remains a v2.4.0 floor-bump item.
+
+### Verification
+- CI: all test legs green (4.x default legs + 3.4.1 floor leg), hassfest green.
+- Live: deploy with rc.2 and run `/validate-live-sensors`. An existing install may keep its already-installed 3.x (it still satisfies `<5`), so check the version the live HA host actually loaded and record it. UNVERIFIED until then.
+
 ## CR-260921-inbound-triage — file tracking for inbound issues/PRs; repo-status + prerelease review
 
 **Date:** 2026-09-21
