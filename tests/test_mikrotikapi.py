@@ -623,6 +623,17 @@ class TestRefusedCommand:
         mock_path.side_effect = trap
         api._connection.path.return_value = mock_path
 
+    def _refusing_command(self, api: MikrotikAPI, entry: dict | None = None) -> None:
+        """Let the path list its entries but refuse every command and update on it."""
+        trap = TrapError(message=self.REFUSAL)
+        item = entry or {"name": "ether1", ".id": "*1"}
+        mock_path = MagicMock()
+        mock_path.__bool__ = MagicMock(return_value=True)
+        mock_path.__iter__ = MagicMock(side_effect=lambda: iter([item]))
+        mock_path.side_effect = trap
+        mock_path.update.side_effect = trap
+        api._connection.path.return_value = mock_path
+
     def _refusals_logged(self, caplog) -> list[str]:
         return [record.getMessage() for record in caplog.records if record.levelno == logging.WARNING and "refused" in record.getMessage()]
 
@@ -673,6 +684,40 @@ class TestRefusedCommand:
             api.query("/interface/lte", "firmware-upgrade", {".id": "*A"})
             api.query("/interface/lte", "firmware-upgrade", {".id": "*A"})
         assert len(self._refusals_logged(caplog)) == 1
+
+    def test_refused_execute_names_the_command_and_path(self, caplog):
+        api = self._connected_api()
+        self._refusing_command(api)
+        with caplog.at_level(logging.WARNING):
+            api.execute("/system/routerboard", "upgrade", None, None)
+        assert self._refusals_logged(caplog) == [f"Mikrotik 10.0.0.1 refused command upgrade on path /system/routerboard : {self.REFUSAL}"]
+
+    def test_refused_set_value_names_the_parameter_and_path(self, caplog):
+        api = self._connected_api()
+        self._refusing_command(api)
+        with caplog.at_level(logging.WARNING):
+            assert api.set_value("/interface/ethernet", "name", "ether1", "disabled", True) is False
+        assert api._connected is True
+        assert self._refusals_logged(caplog) == [f"Mikrotik 10.0.0.1 refused set disabled on path /interface/ethernet : {self.REFUSAL}"]
+
+    def test_refused_run_script_names_the_script(self, caplog):
+        api = self._connected_api()
+        self._refusing_command(api, entry={"name": "backup", ".id": "*1"})
+        with caplog.at_level(logging.WARNING):
+            assert api.run_script("backup") is False
+        assert api._connected is True
+        assert self._refusals_logged(caplog) == [f"Mikrotik 10.0.0.1 refused run of script backup : {self.REFUSAL}"]
+
+    @patch("custom_components.mikrotik_router.mikrotikapi.librouteros")
+    def test_reconnect_logs_a_known_refusal_again(self, mock_lib, caplog):
+        api = self._connected_api()
+        self._refusing_path(api)
+        with caplog.at_level(logging.WARNING):
+            api.query("/interface/lte", "firmware-upgrade", {".id": "*A"})
+            mock_lib.connect.return_value = api._connection
+            api.connect()
+            api.query("/interface/lte", "firmware-upgrade", {".id": "*A"})
+        assert len(self._refusals_logged(caplog)) == 2
 
     def test_lock_released_after_refusal(self):
         api = self._connected_api()
