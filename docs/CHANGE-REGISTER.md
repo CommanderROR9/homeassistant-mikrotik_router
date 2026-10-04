@@ -4,6 +4,26 @@ Changes listed in reverse chronological order.
 
 ---
 
+## CR-261005-wifi-type-schema — wifi-qcom-be / wifi-mediatek detection + `/interface/wifi` schema mapping
+
+**Date:** 2026-10-05
+**Branch:** `CommanderROR9:fix/wifi-type-schema` → `dev` ([#152](https://github.com/jnctech/homeassistant-mikrotik_router/pull/152), merge commit `6ba0ec3`, authorship preserved). Contributed by @CommanderROR9. This is the bugfix half of #146/#147.
+**Status:** Merged to `dev`; ships in 2.3.23.
+
+### What changed
+- `coordinator.py` `_has_wifi_package()` — also recognises `wifi-qcom-be` and `wifi-mediatek`. On 7.13+ the version heuristic already picked `wifi`, so this is for robustness.
+- `get_wireless()` — parses the nested `/interface/wifi` keys (`configuration.ssid/mode/country`, `channel.band/width`) and flattens them onto the legacy names (`ssid`, `mode`, `country`, `band`, `channel-width`) via `_flatten_wifi_keys()` and the module-level `_WIFI_FLAT_MAP`. Absent keys stay absent. The master-interface `unknown` back-fill moved into `_inherit_master_iface()` (ADR-007). `get_wireless` cognitive complexity went from 15 to 8.
+- `get_wireless_hosts()` — maps the wifi registration schema. `signal` is aliased onto `signal-strength` (a device-tracker attribute) only when the legacy field is absent. `tx/rx-bits-per-second`, `bytes` and `band` are collected but inert until the feature half.
+- `entity.py` / `iface_attributes.py` — `type=wifi` interfaces expose `DEVICE_ATTRIBUTES_IFACE_WIFI` with `skip_junk=True`, so there are no `unknown` attributes (ADR-009). The port connection binary_sensor is **kept** for `type=wifi`, because existing wifi-package entities must survive.
+
+### Why
+On wifi-package hardware (be³ reported in #146; also every ax-series router on 7.13+), wifi interfaces had no wireless attributes and clients had no signal strength, because the integration only understood the legacy `wireless` schema. Field evidence: a redacted hAP be³ (ROS 7.25beta5, `wifi-qcom-be`) `/interface/wifi` row, attached to #152.
+
+### Verification
+- CI 13/13 green on `6e5efee`, including both librouteros legs. Static complexipy: no function in `coordinator.py` is above 15.
+- Review: the binary-sensor skip for `wifi` was dropped, because it would have orphaned live `*_wifi*_connection` sensors on a wifi-package hAP ax³. Attribute names were flattened before release to avoid a later breaking rename.
+- **Live: pending.** Deploy with the 2.3.23 beta. On the hAP ax³, confirm the `_connection` sensors survive, the wifi attributes appear without `unknown`, and client trackers gain `signal_strength`.
+
 ## CR-261005-stale-never-close-prs — stale bot never auto-closes PRs
 
 **Date:** 2026-10-05
