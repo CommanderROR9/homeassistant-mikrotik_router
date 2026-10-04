@@ -2,6 +2,8 @@
 
 ## In-flight
 
+> **Updated 2026-10-05 (rc.2 session).** #144 blocker **fixed on `dev`**: [#145](https://github.com/jnctech/homeassistant-mikrotik_router/pull/145) merged 2026-10-04 (ADR-022). `dev` CI then went red on hassfest (`librouteros<4.0` vs HA core's `==4.2.2`); fixed by [#149](https://github.com/jnctech/homeassistant-mikrotik_router/pull/149) (cap → `<5`, CI floor leg 3.4.1; CR-261004-librouteros-4x). Cutting **v2.3.22-rc.2** (CR-261005) → live QA → soak → stable. **Contributor queue:** [#138](https://github.com/jnctech/homeassistant-mikrotik_router/pull/138) was **auto-closed by the stale bot 2026-09-29** without review feedback reaching the contributor. Reopen it and post the review; it targets 2.3.23, with ADR-023 claimed. #147 is still open (ADR-024 claimed; fork CI not yet approved). The stale-bot timeout is shorter than our review cycle.
+>
 > **Updated 2026-09-21 (repo-status + inbound triage session).** Repo aligned: `master ⊆ dev` holds (`master` = v2.3.21 stable, `dev` = v2.3.22-rc.1, post-v2.3.21 back-merge is a real merge commit `da6dfd1`); version files consistent on both branches; all GitHub prereleases correctly flagged (`v2.3.22-beta.1`/`-rc.1` prerelease, `v2.3.21` the latest stable). **v2.3.22 promotion is BLOCKED** on [#144](https://github.com/jnctech/homeassistant-mikrotik_router/issues/144): the v2.3.21 LTE firmware probe (ADR-019) treats a `!trap` refusal as a lost connection, so a router with an `/interface/lte` menu but no modem (hAP ac² / hEX S) never loads its config entry (every entity `unavailable`) — **rc.1 confirmed affected**. Land the trap fix, then cut **v2.3.22-rc.2** before stable.
 >
 > **Inbound triage — filed as drafts; test + merge decisions deferred to an IDE session (no integration-code changes this session):**
@@ -65,7 +67,7 @@
 **Type:** Bug (availability / setup)
 **Priority:** High — **v2.3.22 release-blocker**
 **Created:** 2026-09-15
-**Status:** 🔵 Filed (draft, 2026-09-21 triage) — contributor fix in [#145](https://github.com/jnctech/homeassistant-mikrotik_router/pull/145) (@nowak-mariusz), targets `dev`, CI not yet run. **Recommend INCLUDE.** Test + merge deferred to the IDE session.
+**Status:** 🟢 Merged to `dev` 2026-10-04 — [#145](https://github.com/jnctech/homeassistant-mikrotik_router/pull/145) (@nowak-mariusz), ADR-022; full CI green (incl. `test_reauth_flow_updates_credentials`). Ships in v2.3.22-rc.2; close #144 on stable.
 
 **Symptom:**
 On a router whose `/interface/lte` menu exists with no modem behind it, the v2.3.21 LTE firmware probe (`get_lte_firmware()` → `/interface/lte firmware-upgrade`) is declined by RouterOS with a `!trap` (`failure: Firmware update is not supported on this device!`). `MikrotikAPI` hands every caught exception to `disconnect()`, so the refusal tears down a healthy session; `_async_update_hwinfo()` then `_raise_disconnected()` and `async_setup_entry` never completes — the entry sits in `setup_retry` every 600 s and every entity (device trackers included) stays `unavailable`. Reported on hAP ac² (RBD52G-5HacD2HnD) and hEX S (RB760iGS), RouterOS 7.24.2. **Confirmed affects v2.3.21 and v2.3.22-rc.1** (2.3.20 predates the probe).
