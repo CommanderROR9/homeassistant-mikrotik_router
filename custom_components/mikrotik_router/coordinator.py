@@ -133,6 +133,17 @@ def as_local(dattim: datetime) -> datetime:
     return dattim.astimezone(DEFAULT_TIME_ZONE)
 
 
+# /interface/wifi nests settings as dotted keys; flatten them onto the legacy
+# flat attribute names so wifi interfaces expose the same names as wlan.
+_WIFI_FLAT_MAP = {
+    "configuration.ssid": "ssid",
+    "configuration.mode": "mode",
+    "configuration.country": "country",
+    "channel.band": "band",
+    "channel.width": "channel-width",
+}
+
+
 @dataclass
 class MikrotikData:
     """Data for the mikrotik integration."""
@@ -628,7 +639,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
     def _has_wifi_package(self, packages: dict) -> bool:
         """Check if a wifi package is enabled or version implies wifi module."""
-        if any(pkg in packages and packages[pkg]["enabled"] for pkg in ("wifi", "wifi-qcom", "wifi-qcom-ac")):
+        if any(pkg in packages and packages[pkg]["enabled"] for pkg in ("wifi", "wifi-qcom", "wifi-qcom-ac", "wifi-qcom-be", "wifi-mediatek")):
             return True
         # An explicitly enabled legacy `wireless` package wins over the
         # version heuristic: 7.13+ routers that still ship it are not on
@@ -2817,6 +2828,24 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             vals=vals,
         )
 
+    def _inherit_master_iface(self, uid) -> None:
+        """Back-fill `unknown` values of a virtual interface from its master interface."""
+        row = self.ds["wireless"][uid]
+        if not row["master-interface"]:
+            return
+        master = self.ds["wireless"][row["master-interface"]]
+        for tmp in row:
+            if row[tmp] == "unknown":
+                row[tmp] = master[tmp]
+
+    @staticmethod
+    def _flatten_wifi_keys(row: dict) -> None:
+        """Copy /interface/wifi dotted keys onto the legacy flat attribute names."""
+        for nested, flat in _WIFI_FLAT_MAP.items():
+            value = row.get(nested)
+            if value not in (None, "unknown"):
+                row[flat] = value
+
     # ---------------------------
     #   get_wireless
     # ---------------------------
@@ -2849,6 +2878,11 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 {"name": "wds-mode", "default": "unknown"},
                 {"name": "wds-default-bridge", "default": "unknown"},
                 {"name": "bridge-mode", "default": "unknown"},
+                {"name": "configuration.ssid", "default": "unknown"},
+                {"name": "configuration.mode", "default": "unknown"},
+                {"name": "configuration.country", "default": "unknown"},
+                {"name": "channel.band", "default": "unknown"},
+                {"name": "channel.width", "default": "unknown"},
                 {"name": "hide-ssid", "type": "bool"},
                 {"name": "running", "type": "bool"},
                 {"name": "disabled", "type": "bool"},
@@ -2856,10 +2890,10 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         )
 
         for uid in self.ds["wireless"]:
-            if self.ds["wireless"][uid]["master-interface"]:
-                for tmp in self.ds["wireless"][uid]:
-                    if self.ds["wireless"][uid][tmp] == "unknown":
-                        self.ds["wireless"][uid][tmp] = self.ds["wireless"][self.ds["wireless"][uid]["master-interface"]][tmp]
+            self._inherit_master_iface(uid)
+
+            if self._wifimodule == "wifi":
+                self._flatten_wifi_keys(self.ds["wireless"][uid])
 
             if uid in self.ds["interface"]:
                 for tmp in self.ds["wireless"][uid]:
@@ -2880,11 +2914,21 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 {"name": "ap", "type": "bool"},
                 {"name": "uptime"},
                 {"name": "signal-strength"},
+                {"name": "signal"},
                 {"name": "tx-ccq"},
                 {"name": "tx-rate"},
                 {"name": "rx-rate"},
+                {"name": "tx-bits-per-second"},
+                {"name": "rx-bits-per-second"},
+                {"name": "bytes"},
+                {"name": "band"},
             ],
         )
+        # wifi (wifi-qcom*, wifi-mediatek) reports `signal`; alias it onto the
+        # legacy `signal-strength` only when the legacy field is absent.
+        for host in self.ds["wireless_hosts"].values():
+            if not host.get("signal-strength") and host.get("signal"):
+                host["signal-strength"] = host["signal"]
 
     # ---------------------------
     #   _merge_capsman_hosts

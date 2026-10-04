@@ -41,6 +41,7 @@ from .iface_attributes import (
     DEVICE_ATTRIBUTES_IFACE_CLIENT,
     DEVICE_ATTRIBUTES_IFACE_ETHER,
     DEVICE_ATTRIBUTES_IFACE_SFP,
+    DEVICE_ATTRIBUTES_IFACE_WIFI,
     DEVICE_ATTRIBUTES_IFACE_WIRELESS,
 )
 
@@ -106,6 +107,8 @@ class MikrotikInterfaceEntityMixin:
                 attributes[format_attribute("poe-out")] = poe_out
         elif self._data.get("type") == "wlan":
             copy_attrs(attributes, self._data, DEVICE_ATTRIBUTES_IFACE_WIRELESS)
+        elif self._data.get("type") == "wifi":
+            copy_attrs(attributes, self._data, DEVICE_ATTRIBUTES_IFACE_WIFI, skip_junk=True)
 
         return attributes
 
@@ -162,6 +165,7 @@ def _skip_interface_traffic(config_entry, entity_description, data, uid) -> bool
 def _skip_binary_sensor(config_entry, entity_description, data, uid) -> bool:
     """Skip port binary sensors on wlan or when tracker disabled."""
     if entity_description.func == "MikrotikPortBinarySensor":
+        # type=wifi keeps its connection sensor (existing entities on the wifi package).
         if data[uid]["type"] == "wlan":
             return True
         if not config_entry.options.get(CONF_SENSOR_PORT_TRACKER, DEFAULT_SENSOR_PORT_TRACKER):
