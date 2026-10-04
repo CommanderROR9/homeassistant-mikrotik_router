@@ -4,6 +4,23 @@ Changes listed in reverse chronological order.
 
 ---
 
+## CR-261005-stale-never-close-prs — stale bot never auto-closes PRs
+
+**Date:** 2026-10-05
+**Branch:** `chore/stale-never-close-prs` → PR to `dev`
+**Status:** In Review
+
+### What changed
+- `.github/workflows/stale.yml` — `days-before-pr-close: -1`. PRs are still marked stale after 14 days, but are never closed. The PR stale message says so. The issue-close message now says 7 days, matching `days-before-close` (it said 5).
+- New repo label `planned` (already listed in the exempt labels, but it didn't exist) applied to #138 and #147.
+
+### Why
+The bot closed contributor PR #138 on 2026-09-29 while it was waiting on maintainer review, and #145's author had to bump their PR to keep it open. Contributor PRs usually stall on the maintainer, not the author, so auto-closing them penalises the wrong party. Issues keep the existing 14 + 7 day behaviour.
+
+### Verification
+- `days-before-pr-close` checked against the pinned `actions/stale@28ca103` (v9.0.0) `action.yml`, which documents "-1 to never close stale pull requests".
+- actionlint in CI.
+
 ## CR-261005-release-v2.3.22-rc.2 — cut v2.3.22-rc.2 release candidate
 
 **Date:** 2026-10-05
