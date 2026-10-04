@@ -628,7 +628,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
     def _has_wifi_package(self, packages: dict) -> bool:
         """Check if a wifi package is enabled or version implies wifi module."""
-        if any(pkg in packages and packages[pkg]["enabled"] for pkg in ("wifi", "wifi-qcom", "wifi-qcom-ac")):
+        if any(pkg in packages and packages[pkg]["enabled"] for pkg in ("wifi", "wifi-qcom", "wifi-qcom-ac", "wifi-qcom-be", "wifi-mediatek")):
             return True
         # An explicitly enabled legacy `wireless` package wins over the
         # version heuristic: 7.13+ routers that still ship it are not on
@@ -2849,6 +2849,11 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 {"name": "wds-mode", "default": "unknown"},
                 {"name": "wds-default-bridge", "default": "unknown"},
                 {"name": "bridge-mode", "default": "unknown"},
+                {"name": "configuration.ssid", "default": "unknown"},
+                {"name": "configuration.mode", "default": "unknown"},
+                {"name": "configuration.country", "default": "unknown"},
+                {"name": "channel.band", "default": "unknown"},
+                {"name": "channel.width", "default": "unknown"},
                 {"name": "hide-ssid", "type": "bool"},
                 {"name": "running", "type": "bool"},
                 {"name": "disabled", "type": "bool"},
@@ -2880,11 +2885,21 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 {"name": "ap", "type": "bool"},
                 {"name": "uptime"},
                 {"name": "signal-strength"},
+                {"name": "signal"},
                 {"name": "tx-ccq"},
                 {"name": "tx-rate"},
                 {"name": "rx-rate"},
+                {"name": "tx-bits-per-second"},
+                {"name": "rx-bits-per-second"},
+                {"name": "bytes"},
+                {"name": "band"},
             ],
         )
+        # wifi (wifi-qcom*, wifi-mediatek) reports `signal`; alias it onto the
+        # legacy `signal-strength` only when the legacy field is absent.
+        for host in self.ds["wireless_hosts"].values():
+            if not host.get("signal-strength") and host.get("signal"):
+                host["signal-strength"] = host["signal"]
 
     # ---------------------------
     #   _merge_capsman_hosts

@@ -1174,3 +1174,35 @@ def test_skip_route_table_count_follows_same_gate():
     assert _skip_sensor(cfg, desc, data, "main") is True
     cfg_on = make_config_entry({CONF_SENSOR_ROUTE: True})
     assert _skip_sensor(cfg_on, desc, data, "main") is False
+
+
+def test_skip_port_binary_sensor_on_wifi_interface():
+    """Port binary sensor is skipped for wifi-type interfaces (be3)."""
+    desc = make_entity_desc(func="MikrotikPortBinarySensor")
+    data = {"wifi1": {"type": "wifi"}}
+    cfg = make_config_entry({CONF_SENSOR_PORT_TRACKER: True})
+
+    assert _skip_sensor(cfg, desc, data, "wifi1") is True
+
+
+def test_mixin_wifi_exposes_only_real_attributes():
+    """Wifi interface exposes nested-schema attributes without `unknown` junk."""
+    entity = _ConcreteEntity(
+        {
+            "type": "wifi",
+            "configuration.ssid": "ExampleSSID",
+            "channel.band": "5ghz-ax",
+            "configuration.mode": "unknown",
+            "channel.width": "unknown",
+            "ssid": "unknown",
+            "radio-name": "unknown",
+            "wds-mode": "unknown",
+        }
+    )
+    attrs = entity.extra_state_attributes
+    assert attrs["configuration.ssid"] == "ExampleSSID"
+    assert attrs["channel.band"] == "5ghz-ax"
+    assert "configuration.mode" not in attrs
+    assert "channel.width" not in attrs
+    for junk in ("ssid", "radio_name", "wds_mode"):
+        assert junk not in attrs

@@ -6108,3 +6108,123 @@ def test_wireguard_empty_source_no_phantom_entities():
     coordinator = make_coordinator(api_responses={"/interface/wireguard/peers": []})
     coordinator.get_wireguard_peers()
     assert coordinator.ds["wireguard_peers"] == {}
+
+
+# ---------------------------------------------------------------------------
+# Group AZ3: wifi package detection + wifi registration/interface mapping
+# ---------------------------------------------------------------------------
+
+
+def _wifi_packages(*enabled):
+    """Build a /system/package-style dict with the given packages enabled."""
+    return {name: {"enabled": True} for name in enabled}
+
+
+def test_has_wifi_package_recognises_qcom_be_and_mediatek():
+    """wifi-qcom-be (hAP be3) and wifi-mediatek are detected as wifi packages."""
+    coordinator = make_coordinator(major_fw_version=7)
+    for pkg in ("wifi", "wifi-qcom", "wifi-qcom-ac", "wifi-qcom-be", "wifi-mediatek"):
+        assert coordinator._has_wifi_package(_wifi_packages("routeros", pkg)) is True
+
+
+def test_capabilities_v7_qcom_be_selects_wifi_module():
+    """A be3-style package set (wifi-qcom-be) selects the wifi module."""
+    coordinator = make_coordinator(
+        major_fw_version=7,
+        api_responses={
+            "/system/package": [
+                {"name": "routeros", "disabled": False},
+                {"name": "wifi-qcom-be", "disabled": False},
+            ],
+            "/interface/lte": [],
+            "/interface/wireguard": [],
+        },
+    )
+    coordinator.host = "testhost"
+    coordinator.get_capabilities()
+    assert coordinator._wifimodule == "wifi"
+    assert coordinator.support_wireless is True
+    assert coordinator.support_capsman is False
+
+
+def test_wireless_hosts_wifi_schema_mapping():
+    """Wifi registration rows map signal/bps fields; signal aliases signal-strength."""
+    coordinator = make_coordinator(major_fw_version=7)
+    coordinator.host = "testhost"
+    coordinator._wifimodule = "wifi"
+    coordinator.api = MockMikrotikAPI(
+        responses={
+            "/interface/wifi/registration-table": [
+                {
+                    "mac-address": "AA:BB:CC:DD:EE:01",
+                    "interface": "wifi1",
+                    "uptime": "10m",
+                    "signal": "-44",
+                    "tx-rate": "65Mbps",
+                    "tx-bits-per-second": "1200",
+                    "rx-bits-per-second": "3400",
+                    "bytes": "123456,654321",
+                    "band": "2ghz-n",
+                },
+            ],
+        }
+    )
+    coordinator.get_wireless_hosts()
+    wh = coordinator.ds["wireless_hosts"]["AA:BB:CC:DD:EE:01"]
+    assert wh["signal"] == "-44"
+    assert wh["signal-strength"] == "-44"
+    assert wh["tx-bits-per-second"] == "1200"
+    assert wh["rx-bits-per-second"] == "3400"
+    assert wh["band"] == "2ghz-n"
+
+
+def test_wireless_hosts_legacy_signal_strength_wins():
+    """When both fields exist, the legacy signal-strength is not overwritten."""
+    coordinator = make_coordinator(major_fw_version=7)
+    coordinator._wifimodule = "wireless"
+    coordinator.api = MockMikrotikAPI(
+        responses={
+            "/interface/wireless/registration-table": [
+                {"mac-address": "AA:BB:CC:DD:EE:02", "signal-strength": "-60", "signal": "-44"},
+            ],
+        }
+    )
+    coordinator.get_wireless_hosts()
+    assert coordinator.ds["wireless_hosts"]["AA:BB:CC:DD:EE:02"]["signal-strength"] == "-60"
+
+
+def test_wireless_hosts_signal_absent_stays_absent():
+    """Neither signal field reported -> no fabricated signal-strength."""
+    coordinator = make_coordinator(major_fw_version=7)
+    coordinator._wifimodule = "wifi"
+    coordinator.api = MockMikrotikAPI(responses={"/interface/wifi/registration-table": [{"mac-address": "AA:BB:CC:DD:EE:03"}]})
+    coordinator.get_wireless_hosts()
+    assert not coordinator.ds["wireless_hosts"]["AA:BB:CC:DD:EE:03"].get("signal-strength")
+
+
+def test_get_wireless_wifi_nested_keys_reach_interface():
+    """/interface/wifi dotted keys are parsed and copied onto the interface."""
+    coordinator = make_coordinator(major_fw_version=7)
+    coordinator._wifimodule = "wifi"
+    coordinator.ds["interface"] = {"wifi1": {"name": "wifi1", "type": "wifi"}}
+    coordinator.api = MockMikrotikAPI(
+        responses={
+            "/interface/wifi": [
+                {
+                    "name": "wifi1",
+                    "mac-address": "AA:BB:CC:DD:EE:04",
+                    "configuration.ssid": "ExampleSSID",
+                    "configuration.mode": "ap",
+                    "channel.band": "2ghz-be",
+                    "channel.width": "20/40mhz",
+                    "running": True,
+                    "disabled": False,
+                },
+            ],
+        }
+    )
+    coordinator.get_wireless()
+    iface = coordinator.ds["interface"]["wifi1"]
+    assert iface["configuration.ssid"] == "ExampleSSID"
+    assert iface["channel.band"] == "2ghz-be"
+    assert iface["channel.width"] == "20/40mhz"
