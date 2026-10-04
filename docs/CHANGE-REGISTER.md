@@ -4,6 +4,25 @@ Changes listed in reverse chronological order.
 
 ---
 
+## CR-261005-refusal-log-context — name the command in refusal logs; re-warn after a reconnect
+
+**Date:** 2026-10-05
+**Branch:** `nowak-mariusz:fix/refusal-log-context` → `dev` ([#155](https://github.com/jnctech/homeassistant-mikrotik_router/pull/155), merge commit `2e1a178`, authorship preserved). Contributed by @nowak-mariusz. These are follow-ups from the #145 review (ADR-022).
+**Status:** Merged to `dev`; ships in 2.3.23.
+
+### What changed
+- `mikrotikapi.py` — `set_value`, `execute` and `run_script` pass a descriptive location to `_handle_call_error` (`set <param> on path <path>`, `command <cmd> on path <path>`, `run of script <name>`), as `query` already did. A refusal now names what was refused.
+- `mikrotikapi.py` `connect()` — a successful connect clears `_refused_commands`, so a refusal on the new session logs at WARNING again rather than only at DEBUG. A reconnect often follows a firmware or hardware change.
+- `tests/test_mikrotikapi.py` — 4 tests: the three location strings, and re-warn after a reconnect.
+
+### Why
+ADR-022 logs each distinct refusal once. The non-query paths still logged a bare `execute` / `set_value`, so a refused switch toggle wasn't self-explanatory, and a refusal suppressed on one session stayed suppressed after a reconnect.
+
+### Verification
+- CI 13/13 green on the first run.
+- Contributor live check on a hAP ac² running v2.3.22-rc.2 plus this commit: the LTE firmware-probe refusal logged at WARNING once, and again after a router reboot and reconnect.
+- No behaviour change to `!trap` handling: log wording and level only. Not taken into 2.3.22, which is cut from the rc.2 commit.
+
 ## CR-261005-wifi-type-schema — wifi-qcom-be / wifi-mediatek detection + `/interface/wifi` schema mapping
 
 **Date:** 2026-10-05
