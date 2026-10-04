@@ -4,6 +4,25 @@ Changes listed in reverse chronological order.
 
 ---
 
+## CR-261005-release-v2.3.22-rc.2 — cut v2.3.22-rc.2 release candidate
+
+**Date:** 2026-10-05
+**Branch:** `chore/release-v2.3.22-rc.2` → PR to `dev`
+**Status:** In Review
+
+### What changed
+- `manifest.json` — version `2.3.22-rc.1` → `2.3.22-rc.2`.
+- `README.md`, `info.md` — What's New rolled to rc.2: refused-command fix (#144/#145) and librouteros 4.x support (#149).
+- `docs/decisions/ADR-NEXT-trap-is-not-a-disconnect.md` → `ADR-022-trap-is-not-a-disconnect.md` (number assigned at merge, status Accepted). `docs/decisions/README.md`: index row added, next unused → 025, 023 (#138) and 024 (#147) claimed, 015 marked likely unneeded.
+- `docs/ISSUES.md` — In-flight refreshed; `ISS-260915` → merged.
+
+### Why
+rc.1 is affected by the #144 release-blocker. This rolls the contributor fix (#145, ADR-022) and the librouteros cap-lift (CR-261004-librouteros-4x, which unblocks hassfest) into a new RC, which gets live QA before stable v2.3.22.
+
+### Verification
+- CI on the release PR.
+- Live: deploy to HA, then `/validate-live-sensors`. Record the librouteros version HA loads, and confirm no `!trap`-driven disconnects in the log.
+
 ## CR-261004-librouteros-4x — lift librouteros cap to `<5` (unblocks CI / v2.3.22)
 
 **Date:** 2026-10-04

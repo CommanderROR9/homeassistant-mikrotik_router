@@ -21,14 +21,16 @@ Monitor and control your entire MikroTik network from Home Assistant. This HACS 
 
 ---
 
-## What's New — v2.3.22-rc.1
+## What's New — v2.3.22-rc.2
 
-Release candidate off `dev` adding two opt-in monitoring features from the feature poll, live-validated on a four-router RouterOS fleet before tagging. Both are **off by default** — enable them in the integration options. Supersedes v2.3.22-beta.1, adding the blackhole-attribute fix below.
+Release candidate off `dev` adding two opt-in monitoring features from the feature poll, live-validated on a four-router RouterOS fleet before tagging. Both are **off by default** — enable them in the integration options. Supersedes v2.3.22-rc.1, adding the refused-command fix and the librouteros 4.x support below.
 
 - **Default-route monitoring (multi-WAN / failover awareness).** For each default route (`0.0.0.0/0`, `::/0`) a connectivity binary_sensor follows the route's RouterOS `active` flag, plus a per-routing-table "active default routes" count. Correct under policy routing (each table tracked separately) and ECMP / dual-uplink. Blackhole kill-switch routes are labelled and read inactive. Entity `unique_id`s use a stable `routing-table`+`dst-address`+`gateway`+`distance` composite, not the volatile RouterOS `.id`. Enable **Default route monitoring sensors**. FEATURE-POLL B4. See [ADR-020](docs/decisions/ADR-020-route-monitoring.md).
 - **WireGuard peer sensors.** For each peer: a `connected` binary_sensor (derived from handshake recency), a stable last-handshake timestamp, and per-peer RX/TX totals. Only routers that have WireGuard get these entities; peer identifiers are redacted from diagnostics and the public-key sensor is disabled by default. Enable **WireGuard peer sensors**. FEATURE-POLL B2. See [ADR-021](docs/decisions/ADR-021-wireguard-peer-sensors.md).
 
 - **Blackhole attribute fix.** A blackhole (kill-switch) route's `blackhole` attribute now reads correctly ([#139](https://github.com/jnctech/homeassistant-mikrotik_router/issues/139)). RouterOS delivers `blackhole` as a bare flag over the API (an empty-string word), which the parser was reading as `False`; it is now presence-detected. The `active` failover signal was always correct.
+- **A refused command no longer takes the integration offline.** When RouterOS refused a single command (a `!trap` reply), the integration treated it as a lost connection. On routers with an `/interface/lte` menu but no modem (e.g. hAP ac², hEX S), the v2.3.21 LTE firmware probe was refused this way, so the config entry never loaded and every entity, device trackers included, stayed `unavailable`. A refusal now keeps the session, is logged once per distinct refusal, and the log names the command and menu. Only transport failures disconnect. Fixes [#144](https://github.com/jnctech/homeassistant-mikrotik_router/issues/144). Contributed by @nowak-mariusz in [#145](https://github.com/jnctech/homeassistant-mikrotik_router/pull/145). See [ADR-022](docs/decisions/ADR-022-trap-is-not-a-disconnect.md).
+- **librouteros 4.x supported.** The `librouteros<4.0` cap from v2.3.14 is lifted to `<5`, matching the librouteros 4.x that Home Assistant core now ships. No behaviour change. CI tests both 3.4.1 and 4.x.
 
 ## What's New — v2.3.21
 

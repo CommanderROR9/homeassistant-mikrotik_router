@@ -1,7 +1,7 @@
-# ADR-NEXT: A refused command (`!trap`) is not a lost connection
+# ADR-022: A refused command (`!trap`) is not a lost connection
 
 **Date:** 2026-09-15
-**Status:** Proposed (contributor) — number to be assigned by the maintainer at merge.
+**Status:** Accepted — merged in #145 (2026-10-04), contributed by @nowak-mariusz; number assigned at merge.
 
 ## Context
 
