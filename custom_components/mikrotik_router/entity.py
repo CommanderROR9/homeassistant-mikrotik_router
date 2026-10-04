@@ -165,11 +165,7 @@ def _skip_interface_traffic(config_entry, entity_description, data, uid) -> bool
 def _skip_binary_sensor(config_entry, entity_description, data, uid) -> bool:
     """Skip port binary sensors on wlan or when tracker disabled."""
     if entity_description.func == "MikrotikPortBinarySensor":
-        # NOTE: type `wifi` intentionally NOT skipped here. Every interface on
-        # the new wifi package reports type=wifi, and those currently get the
-        # port connection binary_sensor (owner review 2026-10-04 on #152:
-        # dropping it would break automations; parity with wlan, if ever,
-        # needs its own release-noted change).
+        # type=wifi keeps its connection sensor (existing entities on the wifi package).
         if data[uid]["type"] == "wlan":
             return True
         if not config_entry.options.get(CONF_SENSOR_PORT_TRACKER, DEFAULT_SENSOR_PORT_TRACKER):

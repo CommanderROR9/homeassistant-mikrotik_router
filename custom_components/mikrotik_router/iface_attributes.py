@@ -59,9 +59,8 @@ DEVICE_ATTRIBUTES_IFACE_SFP = [
 # dotted keys (`configuration.ssid`, `channel.band`, ...). The legacy
 # `wireless` keys (mode, radio-name, country, antenna-gain, wds-*, ...) do not
 # exist there, so a dedicated list avoids exposing a dozen `unknown` attributes.
-# Names are flattened onto the legacy `wireless` attribute names (owner review
-# 2026-10-04 on #152) so templates work across old and new hardware; the
-# flattening happens in get_wireless() right after the parse.
+# Names are flattened onto the legacy `wireless` attribute names so templates
+# work across old and new hardware; the flattening happens in get_wireless() right after the parse.
 DEVICE_ATTRIBUTES_IFACE_WIFI = [
     "ssid",
     "mode",
