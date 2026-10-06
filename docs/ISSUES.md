@@ -771,6 +771,35 @@ librouteros 4.0.1 renamed the `connect()` keyword argument `login_methods` → `
 
 ## Backlog
 
+### ENH-260922-ha-floor-bump — raise the declared HA minimum (v2.4.0), with a rolling support policy
+**Type:** Enhancement (compatibility / CI honesty)
+**Priority:** Medium (v2.4.0, after v2.3.22 stable)
+**Created:** 2026-09-22 (decided), filed 2026-10-07
+**Status:** 🔴 Open
+
+The declared floor `2024.3.0` (`hacs.json`, README) has never been tested: CI installs current HA, unpinned, on Python 3.13/3.14. Maintainer decision (2026-09-22): raise the floor in **v2.4.0**, with a **two-version grace** — adopt a rolling **"current HA minus 2"** policy, recorded as an ADR (next free number), rather than a fixed version. Scope: `hacs.json`, README, info.md, and the CI matrix pinning the floor. The bump is for our own reasons (CI honesty, unblocking #131 `via_device` → `via_device_id`, deleting dead compatibility paths), not to track upstream.
+
+### ENH-260922-upstream-cherry-picks — take three floor-free fixes from upstream tomaae v2.3
+**Type:** Enhancement
+**Priority:** Medium
+**Created:** 2026-09-22 (analysed), filed 2026-10-07
+**Status:** 🔴 Open
+
+From the 2026-09-22 upstream analysis, none of these needs the HA 2026.9 floor:
+- `c6c8e0d` — hotspot package detection (RouterOS 6 and 7.20+ SMIPS). We have no `support_hotspot` gate. Highest value.
+- `f510aa8` — WDS dynamic source switching. We still run the code upstream replaced.
+- ~~`4871855` + `d5b153d` librouteros 3.x/4.x dual login~~ — **superseded** by CR-261004-librouteros-4x (#149); not needed.
+
+Not a cherry-pick: `7fb4b4c` wifi module detection conflicts with our `_wifimodule` / `_has_wifi_package` structure; #152 covered the package names. Port by hand if needed.
+
+### ENH-260922-upstream-migration-adr — device-rename and config-entry migrations from upstream (out of v2.4.0)
+**Type:** Enhancement (needs ADR)
+**Priority:** Low
+**Created:** 2026-09-22 (analysed), filed 2026-10-07
+**Status:** 🔴 Open — deliberately out of v2.4.0 scope
+
+Upstream changes that require HA 2026.9: `ac1f88f` (UnitOfRatio), `bd093d0` (zone model), `e94160c` (`via_device_id`). One renames users' devices (`default_name` → `name`), and two are **one-way config-entry migrations**. Taking any of them needs its own migration ADR covering rollback and user-visible renames. Not merge-as-is.
+
 ### ISS-260326-tracker-wireless-detection — Device tracker uses old wireless detection logic
 **Type:** Bug
 **Priority:** Medium
