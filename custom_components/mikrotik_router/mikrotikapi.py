@@ -156,6 +156,10 @@ class MikrotikAPI:
                     _LOGGER.debug("Mikrotik Connected to %s", self._host)
                 self._connected = True
                 self._reconnected = True
+                # A fresh session gets fresh refusal warnings: a reconnect often
+                # follows a firmware or hardware change that alters what the
+                # router will run.
+                self._refused_commands.clear()
 
         return self._connected
 
@@ -275,7 +279,7 @@ class MikrotikAPI:
                     return False
                 response.update(**{".id": entry_found, mod_param: mod_value})
             except Exception as e:
-                self._handle_call_error("set_value", e)
+                self._handle_call_error(f"set {mod_param} on path {path}", e)
                 return False
 
         return True
@@ -317,7 +321,7 @@ class MikrotikAPI:
 
                 tuple(response(command, **params))
             except Exception as e:
-                self._handle_call_error("execute", e)
+                self._handle_call_error(f"command {command} on path {path}", e)
                 return False
 
         return True
@@ -341,7 +345,7 @@ class MikrotikAPI:
                 run = response("run", **{".id": entry_found})
                 tuple(run)
             except Exception as e:
-                self._handle_call_error("run_script", e)
+                self._handle_call_error(f"run of script {name}", e)
                 return False
 
         return True

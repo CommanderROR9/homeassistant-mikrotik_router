@@ -4,6 +4,45 @@ Changes listed in reverse chronological order.
 
 ---
 
+## CR-261005-refusal-log-context — name the command in refusal logs; re-warn after a reconnect
+
+**Date:** 2026-10-05
+**Branch:** `nowak-mariusz:fix/refusal-log-context` → `dev` ([#155](https://github.com/jnctech/homeassistant-mikrotik_router/pull/155), merge commit `2e1a178`, authorship preserved). Contributed by @nowak-mariusz. These are follow-ups from the #145 review (ADR-022).
+**Status:** Merged to `dev`; ships in 2.3.23.
+
+### What changed
+- `mikrotikapi.py` — `set_value`, `execute` and `run_script` pass a descriptive location to `_handle_call_error` (`set <param> on path <path>`, `command <cmd> on path <path>`, `run of script <name>`), as `query` already did. A refusal now names what was refused.
+- `mikrotikapi.py` `connect()` — a successful connect clears `_refused_commands`, so a refusal on the new session logs at WARNING again rather than only at DEBUG. A reconnect often follows a firmware or hardware change.
+- `tests/test_mikrotikapi.py` — 4 tests: the three location strings, and re-warn after a reconnect.
+
+### Why
+ADR-022 logs each distinct refusal once. The non-query paths still logged a bare `execute` / `set_value`, so a refused switch toggle wasn't self-explanatory, and a refusal suppressed on one session stayed suppressed after a reconnect.
+
+### Verification
+- CI 13/13 green on the first run.
+- Contributor live check on a hAP ac² running v2.3.22-rc.2 plus this commit: the LTE firmware-probe refusal logged at WARNING once, and again after a router reboot and reconnect.
+- No behaviour change to `!trap` handling: log wording and level only. Not taken into 2.3.22, which is cut from the rc.2 commit.
+
+## CR-261005-wifi-type-schema — wifi-qcom-be / wifi-mediatek detection + `/interface/wifi` schema mapping
+
+**Date:** 2026-10-05
+**Branch:** `CommanderROR9:fix/wifi-type-schema` → `dev` ([#152](https://github.com/jnctech/homeassistant-mikrotik_router/pull/152), merge commit `6ba0ec3`, authorship preserved). Contributed by @CommanderROR9. This is the bugfix half of #146/#147.
+**Status:** Merged to `dev`; ships in 2.3.23.
+
+### What changed
+- `coordinator.py` `_has_wifi_package()` — also recognises `wifi-qcom-be` and `wifi-mediatek`. On 7.13+ the version heuristic already picked `wifi`, so this is for robustness.
+- `get_wireless()` — parses the nested `/interface/wifi` keys (`configuration.ssid/mode/country`, `channel.band/width`) and flattens them onto the legacy names (`ssid`, `mode`, `country`, `band`, `channel-width`) via `_flatten_wifi_keys()` and the module-level `_WIFI_FLAT_MAP`. Absent keys stay absent. The master-interface `unknown` back-fill moved into `_inherit_master_iface()` (ADR-007). `get_wireless` cognitive complexity went from 15 to 8.
+- `get_wireless_hosts()` — maps the wifi registration schema. `signal` is aliased onto `signal-strength` (a device-tracker attribute) only when the legacy field is absent. `tx/rx-bits-per-second`, `bytes` and `band` are collected but inert until the feature half.
+- `entity.py` / `iface_attributes.py` — `type=wifi` interfaces expose `DEVICE_ATTRIBUTES_IFACE_WIFI` with `skip_junk=True`, so there are no `unknown` attributes (ADR-009). The port connection binary_sensor is **kept** for `type=wifi`, because existing wifi-package entities must survive.
+
+### Why
+On wifi-package hardware (be³ reported in #146; also every ax-series router on 7.13+), wifi interfaces had no wireless attributes and clients had no signal strength, because the integration only understood the legacy `wireless` schema. Field evidence: a redacted hAP be³ (ROS 7.25beta5, `wifi-qcom-be`) `/interface/wifi` row, attached to #152.
+
+### Verification
+- CI 13/13 green on `6e5efee`, including both librouteros legs. Static complexipy: no function in `coordinator.py` is above 15.
+- Review: the binary-sensor skip for `wifi` was dropped, because it would have orphaned live `*_wifi*_connection` sensors on a wifi-package hAP ax³. Attribute names were flattened before release to avoid a later breaking rename.
+- **Live: pending.** Deploy with the 2.3.23 beta. On the hAP ax³, confirm the `_connection` sensors survive, the wifi attributes appear without `unknown`, and client trackers gain `signal_strength`.
+
 ## CR-261005-stale-never-close-prs — stale bot never auto-closes PRs
 
 **Date:** 2026-10-05
