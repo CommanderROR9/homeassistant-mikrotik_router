@@ -267,6 +267,9 @@ class MikrotikTrackerCoordinator(DataUpdateCoordinator[None]):
 class MikrotikCoordinator(DataUpdateCoordinator[None]):
     """MikrotikCoordinator Class"""
 
+    # Interface names in the latest /interface reply (None until the first poll).
+    _interface_names_seen: set[str] | None = None
+
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry):
         """Initialize MikrotikCoordinator."""
         self.hass = hass
@@ -1057,6 +1060,21 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         for field, source in self._LIVE_TRAFFIC_FIELDS:
             iface[field] = self._to_float_or_none(row.get(source))
 
+    def _split_stale_interfaces(self, interfaces: dict) -> tuple[dict, dict]:
+        """Split interfaces into (current, stale) by the latest /interface reply.
+
+        `ds["interface"]` only merges, so a deleted/renamed interface lingers.
+        A single unknown name makes RouterOS refuse the whole batched
+        monitor-traffic call, so only names seen in the current poll are batched.
+        Before the first /interface poll (None) nothing is treated as stale.
+        """
+        seen = self._interface_names_seen
+        if seen is None:
+            return interfaces, {}
+        current = {uid: i for uid, i in interfaces.items() if (i.get("name") or uid) in seen}
+        stale = {uid: i for uid, i in interfaces.items() if uid not in current}
+        return current, stale
+
     def get_interface_live_traffic(self) -> None:
         """Poll live per-interface rates via a single batched monitor-traffic call.
 
@@ -1070,6 +1088,12 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         interfaces = {uid: iface for uid, iface in self.ds.get("interface", {}).items() if iface.get("type") != "bridge"}
         if not interfaces:
             _LOGGER.debug("Mikrotik %s monitor-traffic skipped: no interfaces", self.host)
+            return
+        interfaces, stale = self._split_stale_interfaces(interfaces)
+        for iface in stale.values():
+            self._clear_live_fields(iface)
+        if not interfaces:
+            _LOGGER.debug("Mikrotik %s monitor-traffic skipped: no current interfaces", self.host)
             return
         names = [iface.get("name") or uid for uid, iface in interfaces.items()]
         rows = self.api.query(
@@ -1197,9 +1221,12 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
     def get_interface(self) -> None:
         """Get all interfaces data from Mikrotik"""
+        response = self.api.query("/interface")
+        if response is not None:
+            self._interface_names_seen = {row["name"] for row in response if row.get("name")}
         self.ds["interface"] = parse_api(
             data=self.ds["interface"],
-            source=self.api.query("/interface"),
+            source=response,
             key="default-name",
             key_secondary="name",
             vals=[

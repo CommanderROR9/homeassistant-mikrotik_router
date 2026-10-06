@@ -6371,3 +6371,51 @@ def test_live_traffic_no_interfaces_is_noop():
     coordinator = _live_coordinator({}, [{"name": "ether1", "rx-bits-per-second": "100"}])
     coordinator.get_interface_live_traffic()
     assert coordinator.ds["interface"] == {}
+
+
+def test_live_traffic_excludes_stale_interface_from_batch():
+    """A vanished interface lingering in ds is not batched (one unknown name refuses the call)."""
+    coordinator = _live_coordinator(
+        {"ether1": _iface("ether1"), "pppoe-gone": _iface("pppoe-gone", "pppoe-out", **{"rx-live": 9.0})},
+        [{"name": "ether1", "rx-bits-per-second": "1"}],
+    )
+    coordinator._interface_names_seen = {"ether1"}
+    calls = []
+    original = coordinator.api.query
+
+    def spy(*args, **kwargs):
+        calls.append((args, kwargs))
+        return original(*args, **kwargs)
+
+    coordinator.api.query = spy
+    coordinator.get_interface_live_traffic()
+    assert len(calls) == 1
+    assert calls[0][1]["args"]["interface"] == "ether1"
+    assert coordinator.ds["interface"]["ether1"]["rx-live"] == 1.0
+    assert coordinator.ds["interface"]["pppoe-gone"]["rx-live"] is None
+
+
+def test_live_traffic_all_stale_skips_call():
+    """If every known interface is stale, no monitor-traffic call is made."""
+    coordinator = _live_coordinator({"ether9": _iface("ether9", **{"rx-live": 3.0})}, [])
+    coordinator._interface_names_seen = {"ether1"}
+    calls = []
+    coordinator.api.query = lambda *a, **k: calls.append(a)
+    coordinator.get_interface_live_traffic()
+    assert calls == []
+    assert coordinator.ds["interface"]["ether9"]["rx-live"] is None
+
+
+def test_get_interface_records_names_seen():
+    """get_interface records the names from the /interface reply without an extra call."""
+    coordinator = make_coordinator()
+    coordinator.api = MockMikrotikAPI(
+        responses={
+            "/interface": [
+                {"default-name": "ether1", "name": "ether1", ".id": "*1", "type": "ether", "running": "true", "disabled": "false"},
+                {"default-name": "pppoe-out1", "name": "pppoe-out1", ".id": "*2", "type": "pppoe-out", "running": "true", "disabled": "false"},
+            ]
+        }
+    )
+    coordinator.get_interface()
+    assert coordinator._interface_names_seen == {"ether1", "pppoe-out1"}
