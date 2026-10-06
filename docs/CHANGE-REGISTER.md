@@ -4,6 +4,23 @@ Changes listed in reverse chronological order.
 
 ---
 
+## CR-261007-release-v2.3.22-rc.3 — cut v2.3.22-rc.3 release candidate
+
+**Date:** 2026-10-07
+**Branch:** `chore/release-v2.3.22-rc.3` → PR to `dev`
+**Status:** In Review
+
+### What changed
+- `manifest.json` — `2.3.22-rc.2` → `2.3.22-rc.3`.
+- `README.md`, `info.md` — What's New rolled to rc.3, adding #152 (wifi-package fixes, @CommanderROR9) and #155 (refusal log context, @nowak-mariusz).
+
+### Why
+rc.2 soaked clean (2.5 days, re-checked 2026-10-07). A stable cut from the rc.2 commit (#157) was closed because `branch-sync-guard` requires PRs to `master` to come from `dev`. `dev` already carries #152 and #155, so v2.3.22 goes through rc.3 from `dev`, then a normal `dev → master` release. Contributor commits reach `master` unchanged via merge commits.
+
+### Verification
+- CI on the release PR. SonarCloud is red on a token error, pre-existing since 2026-09-07; the operator has accepted it as a non-blocker.
+- Live: deploy rc.3, run `/validate-live-sensors` against the rc.2 numbers, and on the hAP ax³ (`wifi` package) confirm the `_connection` sensors survive, the wifi attributes appear without `unknown`, and clients report `signal_strength`. Then a short soak.
+
 ## CR-261005-refusal-log-context — name the command in refusal logs; re-warn after a reconnect
 
 **Date:** 2026-10-05
