@@ -3350,6 +3350,58 @@ def test_dhcp_server_lease_count_unknown_server_ignored():
     assert coordinator.ds["dhcp-server"]["defconf"]["lease-count"] == 0
 
 
+def _lease(mac, server):
+    return {"mac-address": mac, "address": "192.168.1.10", "server": server, "status": "bound"}
+
+
+def test_dhcp_removed_lease_drops_out_of_count():
+    """#160: a lease deleted on the router leaves ds['dhcp'] and the lease count."""
+    coordinator = make_coordinator(
+        api_responses={
+            "/ip/dhcp-server/lease": [_lease("AA:BB:CC:DD:EE:01", "lan"), _lease("AA:BB:CC:DD:EE:02", "iot")],
+            "/ip/dhcp-server": [
+                {"name": "lan", "interface": "bridge1", "disabled": False},
+                {"name": "iot", "interface": "vlan40", "disabled": False},
+            ],
+        }
+    )
+    coordinator.api.connected = lambda: True
+    coordinator.get_dhcp_server()
+    coordinator.get_dhcp()
+    assert coordinator.ds["dhcp-server"]["iot"]["lease-count"] == 1
+
+    # iot's only lease is deleted: query() returns the remaining lease.
+    coordinator.api.responses["/ip/dhcp-server/lease"] = [_lease("AA:BB:CC:DD:EE:01", "lan")]
+    coordinator.get_dhcp()
+    assert "AA:BB:CC:DD:EE:02" not in coordinator.ds["dhcp"]
+    assert coordinator.ds["dhcp-server"]["iot"]["lease-count"] == 0
+    assert coordinator.ds["dhcp-server"]["lan"]["lease-count"] == 1
+
+    # Every lease deleted: query() returns None while still connected.
+    coordinator.api.responses["/ip/dhcp-server/lease"] = None
+    coordinator.get_dhcp()
+    assert coordinator.ds["dhcp"] == {}
+    assert coordinator.ds["dhcp-server"]["lan"]["lease-count"] == 0
+
+
+def test_dhcp_failed_query_keeps_prior_leases():
+    """A query that fails on a dropped connection keeps the prior leases."""
+    coordinator = make_coordinator(
+        api_responses={
+            "/ip/dhcp-server/lease": [_lease("AA:BB:CC:DD:EE:01", "lan")],
+            "/ip/dhcp-server": [{"name": "lan", "interface": "bridge1", "disabled": False}],
+        }
+    )
+    coordinator.get_dhcp_server()
+    coordinator.get_dhcp()
+
+    coordinator.api.responses["/ip/dhcp-server/lease"] = None
+    coordinator.api.connected = lambda: False
+    coordinator.get_dhcp()
+    assert "AA:BB:CC:DD:EE:01" in coordinator.ds["dhcp"]
+    assert coordinator.ds["dhcp-server"]["lan"]["lease-count"] == 1
+
+
 def test_dhcp_client_parsing():
     """DHCP client entries are parsed with interface as key."""
     coordinator = make_coordinator(
