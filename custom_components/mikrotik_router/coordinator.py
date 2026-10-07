@@ -2593,10 +2593,20 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     #   get_dhcp
     # ---------------------------
     def get_dhcp(self) -> None:
-        """Get DHCP data from Mikrotik"""
+        """Get DHCP data from Mikrotik
+
+        Rebuilt fresh each poll (data={}) so a lease removed on the router drops
+        out of ds["dhcp"] and the per-server lease count (#160). query() returns
+        None both on failure and for an empty table; only a dropped connection
+        means failure, so keep the prior leases then rather than blanking hosts.
+        """
+        source = self.api.query("/ip/dhcp-server/lease")
+        if source is None and not self.api.connected():
+            return
+
         self.ds["dhcp"] = parse_api(
-            data=self.ds["dhcp"],
-            source=self.api.query("/ip/dhcp-server/lease"),
+            data={},
+            source=source,
             key="mac-address",
             vals=[
                 {"name": "mac-address"},

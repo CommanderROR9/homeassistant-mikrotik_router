@@ -4,6 +4,24 @@ Changes listed in reverse chronological order.
 
 ---
 
+## CR-261007-dhcp-lease-prune — deleted DHCP leases drop out of the lease count (#160)
+
+**Date:** 2026-10-07
+**Branch:** `fix/dhcp-lease-prune` → `dev`. Fixes [#160](https://github.com/jnctech/homeassistant-mikrotik_router/issues/160).
+**Status:** In review. Target: v2.3.22-rc.3 (release gate for 2.3.22).
+
+### What changed
+- `coordinator.py` `get_dhcp()` — `ds["dhcp"]` is rebuilt from `data={}` each poll instead of merged into, the same pattern as the route and WireGuard-peer datasets. A lease deleted on the router now leaves `ds["dhcp"]` and `dhcp_server_lease_count` on the next poll rather than at the next reload.
+- `query()` returns `None` both on failure and for an empty table (`mikrotikapi.py` `_query_list`). If the connection has dropped, the prior leases are kept so hosts don't lose their DHCP address and interface for a cycle. If it is still up, `None` means zero leases and the dataset is cleared.
+- `tests/test_coordinator.py` — 2 tests: a removed lease leaves the dataset and per-server count (including the all-leases-removed case), and a failed query on a dropped connection keeps the prior leases.
+
+### Why
+`parse_api` merges into the dict it's given and never deletes missing keys, so a deleted lease was counted until reload. Seen in v2.3.22-rc.2 live validation: a server with 0 leases on the router showed 1 in HA.
+
+### Verification
+- ruff (0.9.0) lint and format clean; 783 passed, 5 skipped (Docker, Python 3.13). `get_dhcp` cognitive complexity 3.
+- Readers of `ds["dhcp"]` (`_merge_dhcp_hosts`, host address/name/comment lookups) all guard with `uid in` or iterate, so a pruned lease is safe for them. A host first seen through DHCP stays in `ds["host"]` as before; only its lease data stops refreshing.
+
 ## CR-261005-refusal-log-context — name the command in refusal logs; re-warn after a reconnect
 
 **Date:** 2026-10-05
