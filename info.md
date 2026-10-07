@@ -19,6 +19,7 @@ Release candidate adding two opt-in monitoring features (off by default), live-v
 - **librouteros 4.x supported** — cap lifted from `<4.0` to `<5`, matching HA core. No behaviour change.
 - **Wifi-package fixes** — `wifi`-type interfaces (wifi-qcom-be, wifi-mediatek and all 7.13+ `wifi` installs) expose `ssid`/`mode`/`country`/`band`/`channel-width` under the legacy names, with no `unknown` filler; clients now report `signal_strength`. Contributed by @CommanderROR9 (#152).
 - **Clearer refusal logs** — refused toggles, settings and scripts name what was refused, and warn again after a reconnect. @nowak-mariusz (#155).
+- **DHCP lease count fix**: deleted leases drop out of the per-server count on the next poll (#160).
 
 ### What's new in v2.3.21
 Stable release rolling up the v2.3.21 beta cycle (beta.1–beta.2). Two contributor-driven additions + an integration-wide reliability fix, live-validated on a four-controller deployment; the LTE sensors confirmed on real modem hardware by the contributor.
