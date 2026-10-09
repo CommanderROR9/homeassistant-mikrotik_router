@@ -1106,6 +1106,10 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             for iface in interfaces.values():
                 self._clear_live_fields(iface)
             return
+        self._merge_live_rows(interfaces, rows)
+
+    def _merge_live_rows(self, interfaces: dict, rows: list) -> None:
+        """Apply each monitor-traffic row to its interface; a missing row clears it."""
         by_name = {row.get("name"): row for row in rows}
         for uid, iface in interfaces.items():
             row = by_name.get(iface.get("name") or uid)

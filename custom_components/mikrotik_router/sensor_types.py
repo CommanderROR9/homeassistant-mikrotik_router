@@ -869,7 +869,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="traffic_tx_live",
         name="TX live",
-        icon="mdi:upload-network-outline",
+        icon="mdi:upload-outline",
         native_unit_of_measurement=UnitOfDataRate.BITS_PER_SECOND,
         suggested_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
         suggested_display_precision=1,
@@ -890,7 +890,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="traffic_rx_live",
         name="RX live",
-        icon="mdi:download-network-outline",
+        icon="mdi:download-outline",
         native_unit_of_measurement=UnitOfDataRate.BITS_PER_SECOND,
         suggested_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
         suggested_display_precision=1,
