@@ -4,7 +4,7 @@
 
 > **Updated 2026-10-05 (rc.2 session).** #144 blocker **fixed on `dev`**: [#145](https://github.com/jnctech/homeassistant-mikrotik_router/pull/145) merged 2026-10-04 (ADR-022). `dev` CI then went red on hassfest (`librouteros<4.0` vs HA core's `==4.2.2`); fixed by [#149](https://github.com/jnctech/homeassistant-mikrotik_router/pull/149) (cap → `<5`, CI floor leg 3.4.1; CR-261004-librouteros-4x). Cutting **v2.3.22-rc.2** (CR-261005) → live QA → soak → stable. **Contributor queue:** [#138](https://github.com/jnctech/homeassistant-mikrotik_router/pull/138) was **auto-closed by the stale bot 2026-09-29** without review feedback reaching the contributor. Reopen it and post the review; it targets 2.3.23, with ADR-023 claimed. #147 is still open (ADR-024 claimed; fork CI not yet approved). The stale-bot timeout is shorter than our review cycle (fixed: #151, PRs never auto-close).
 >
-> **Release path, 2026-10-05:** `dev` now carries 2.3.23 work (#152, merged after rc.2 was tagged). **Cut v2.3.22 stable from the rc.2 commit, not from `dev`:** branch `release/v2.3.22` from `c9a0457` (tag `v2.3.22-rc.2`), bump the version, open a PR → `master`, then do a real back-merge `master → dev`. This keeps the soaked rc.2 content as stable and keeps `master ⊆ dev`.
+> **Release path (revised 2026-10-07):** the 2026-10-05 plan to cut stable from the rc.2 commit was abandoned. `branch-sync-guard` only allows `dev → master` PRs (#157 closed). v2.3.22 now goes **rc.3 from `dev`** (rc.2 + #152 + #155; CR-261007-release-v2.3.22-rc.3) → live QA (incl. the hAP ax³ check for #152) → short soak → `dev → master` → real back-merge. SonarCloud is red on a token error since 2026-09-07; the operator accepts it as a non-blocker until the token is renewed.
 >
 > **Updated 2026-09-21 (repo-status + inbound triage session).** Repo aligned: `master ⊆ dev` holds (`master` = v2.3.21 stable, `dev` = v2.3.22-rc.1, post-v2.3.21 back-merge is a real merge commit `da6dfd1`); version files consistent on both branches; all GitHub prereleases correctly flagged (`v2.3.22-beta.1`/`-rc.1` prerelease, `v2.3.21` the latest stable). **v2.3.22 promotion is BLOCKED** on [#144](https://github.com/jnctech/homeassistant-mikrotik_router/issues/144): the v2.3.21 LTE firmware probe (ADR-019) treats a `!trap` refusal as a lost connection, so a router with an `/interface/lte` menu but no modem (hAP ac² / hEX S) never loads its config entry (every entity `unavailable`) — **rc.1 confirmed affected**. Land the trap fix, then cut **v2.3.22-rc.2** before stable.
 >
@@ -770,6 +770,35 @@ librouteros 4.0.1 renamed the `connect()` keyword argument `login_methods` → `
 ---
 
 ## Backlog
+
+### ENH-260922-ha-floor-bump — raise the declared HA minimum (v2.4.0), with a rolling support policy
+**Type:** Enhancement (compatibility / CI honesty)
+**Priority:** Medium (v2.4.0, after v2.3.22 stable)
+**Created:** 2026-09-22 (decided), filed 2026-10-07
+**Status:** 🔴 Open
+
+The declared floor `2024.3.0` (`hacs.json`, README) has never been tested: CI installs current HA, unpinned, on Python 3.13/3.14. Maintainer decision (2026-09-22): raise the floor in **v2.4.0**, with a **two-version grace** — adopt a rolling **"current HA minus 2"** policy, recorded as an ADR (next free number), rather than a fixed version. Scope: `hacs.json`, README, info.md, and the CI matrix pinning the floor. The bump is for our own reasons (CI honesty, unblocking #131 `via_device` → `via_device_id`, deleting dead compatibility paths), not to track upstream.
+
+### ENH-260922-upstream-cherry-picks — take three floor-free fixes from upstream tomaae v2.3
+**Type:** Enhancement
+**Priority:** Medium
+**Created:** 2026-09-22 (analysed), filed 2026-10-07
+**Status:** 🔴 Open
+
+From the 2026-09-22 upstream analysis, none of these needs the HA 2026.9 floor:
+- `c6c8e0d` — hotspot package detection (RouterOS 6 and 7.20+ SMIPS). We have no `support_hotspot` gate. Highest value.
+- `f510aa8` — WDS dynamic source switching. We still run the code upstream replaced.
+- ~~`4871855` + `d5b153d` librouteros 3.x/4.x dual login~~ — **superseded** by CR-261004-librouteros-4x (#149); not needed.
+
+Not a cherry-pick: `7fb4b4c` wifi module detection conflicts with our `_wifimodule` / `_has_wifi_package` structure; #152 covered the package names. Port by hand if needed.
+
+### ENH-260922-upstream-migration-adr — device-rename and config-entry migrations from upstream (out of v2.4.0)
+**Type:** Enhancement (needs ADR)
+**Priority:** Low
+**Created:** 2026-09-22 (analysed), filed 2026-10-07
+**Status:** 🔴 Open — deliberately out of v2.4.0 scope
+
+Upstream changes that require HA 2026.9: `ac1f88f` (UnitOfRatio), `bd093d0` (zone model), `e94160c` (`via_device_id`). One renames users' devices (`default_name` → `name`), and two are **one-way config-entry migrations**. Taking any of them needs its own migration ADR covering rollback and user-visible renames. Not merge-as-is.
 
 ### ISS-260326-tracker-wireless-detection — Device tracker uses old wireless detection logic
 **Type:** Bug
